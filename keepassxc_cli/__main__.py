@@ -1,4 +1,4 @@
-"""CLI entry point for keepassxc-cli."""
+"""CLI entry point for kpxc-cli."""
 from __future__ import annotations
 
 import argparse
@@ -11,7 +11,7 @@ from keepassxc_browser_api import BrowserClient, BrowserConfig
 from keepassxc_browser_api.exceptions import ConnectionError, DatabaseLockedError, KeePassXCError, ProtocolError
 
 from .config import CliConfig, DEFAULT_CLI_CONFIG_PATH
-from .commands import setup, status, show, add, edit, rm, totp, clip, lock, unlock, mkdir, group_uuid, version
+from .commands import setup, status, show, add, edit, rm, totp, clip, lock, unlock, mkdir, group_uuid, version, exit_codes
 
 # Shared parent parser that injects -j/--json into each subparser that supports it.
 # Defined at module level so command modules can import it if needed.
@@ -27,7 +27,7 @@ fmt_parent.add_argument(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        prog="keepassxc-cli",
+        prog="kpxc-cli",
         description="CLI for KeePassXC using the browser extension protocol with biometric unlock",
     )
     parser.add_argument(
@@ -58,6 +58,7 @@ def main() -> None:
     mkdir.add_parser(subparsers, fmt_parent)
     group_uuid.add_parser(subparsers, fmt_parent)
     version.add_parser(subparsers, fmt_parent)
+    exit_codes.add_parser(subparsers, fmt_parent)
 
     args = parser.parse_args()
 

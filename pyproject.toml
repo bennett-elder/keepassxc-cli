@@ -21,7 +21,7 @@ dev = [
 ]
 
 [project.scripts]
-keepassxc-cli = "keepassxc_cli.__main__:main"
+kpxc-cli = "keepassxc_cli.__main__:main"
 
 [tool.setuptools]
 packages = ["keepassxc_cli", "keepassxc_cli.commands"]

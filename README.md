@@ -2,7 +2,7 @@
 
 A command-line interface for [KeePassXC](https://keepassxc.org/) that communicates via the browser extension protocol, supporting biometric (TouchID/fingerprint) unlock on supported platforms.
 
-`keepassxc-cli` talks to a running KeePassXC instance using the same native messaging protocol used by the KeePassXC Browser extension. This means:
+`kpxc-cli` talks to a running KeePassXC instance using the same native messaging protocol used by the KeePassXC Browser extension. This means:
 
 - **Biometric unlock**: On macOS with TouchID (or similar) configured in KeePassXC, you can authenticate via fingerprint rather than typing your master password.
 - **No master password in shell history**: Authentication happens through KeePassXC's GUI, not the terminal.
@@ -40,10 +40,10 @@ pipx install keepassxc-cli
 
 ## Setup
 
-Before using `keepassxc-cli`, associate it with your KeePassXC instance:
+Before using `kpxc-cli`, associate it with your KeePassXC instance:
 
 ```bash
-keepassxc-cli setup
+kpxc-cli setup
 ```
 
 This performs a key exchange with KeePassXC (you will be prompted to allow the association in the KeePassXC GUI). The association is saved to `~/.keepassxc/browser-api.json`.
@@ -53,7 +53,7 @@ This performs a key exchange with KeePassXC (you will be prompted to allow the a
 ### Global options
 
 ```
-keepassxc-cli [--config PATH] [--browser-api-config PATH] [-v] COMMAND [COMMAND OPTIONS]
+kpxc-cli [--config PATH] [--browser-api-config PATH] [-v] COMMAND [COMMAND OPTIONS]
 ```
 
 | Option | Description |
@@ -65,8 +65,8 @@ keepassxc-cli [--config PATH] [--browser-api-config PATH] [-v] COMMAND [COMMAND 
 Some commands support a `-j / --json` flag for JSON output — pass it anywhere after the subcommand name:
 
 ```bash
-keepassxc-cli show https://github.com -j
-keepassxc-cli status -j
+kpxc-cli show https://github.com -j
+kpxc-cli status -j
 ```
 
 ### Commands
@@ -76,22 +76,22 @@ keepassxc-cli status -j
 #### `setup` — Associate with KeePassXC
 
 ```bash
-keepassxc-cli setup
+kpxc-cli setup
 ```
 
 #### `status` — Connection and association status
 
 ```bash
-keepassxc-cli status
-keepassxc-cli status -j
+kpxc-cli status
+kpxc-cli status -j
 ```
 
 #### `show` — Show entries for a URL
 
 ```bash
-keepassxc-cli show https://github.com
-keepassxc-cli show https://github.com -p     # reveal password and TOTP
-keepassxc-cli show https://github.com -j
+kpxc-cli show https://github.com
+kpxc-cli show https://github.com -p     # reveal password and TOTP
+kpxc-cli show https://github.com -j
 ```
 
 Without `-p`, password and TOTP are omitted from the output entirely.
@@ -99,16 +99,16 @@ Without `-p`, password and TOTP are omitted from the output entirely.
 #### `totp` — Get TOTP code
 
 ```bash
-keepassxc-cli totp https://github.com
-keepassxc-cli totp https://github.com -j
+kpxc-cli totp https://github.com
+kpxc-cli totp https://github.com -j
 ```
 
 #### `clip` — Copy a field to clipboard
 
 ```bash
-keepassxc-cli clip https://github.com password
-keepassxc-cli clip https://github.com username
-keepassxc-cli clip https://github.com totp
+kpxc-cli clip https://github.com password
+kpxc-cli clip https://github.com username
+kpxc-cli clip https://github.com totp
 ```
 > **Note**: `clip` does not support `-j/--json` output — the field value is always copied silently to the clipboard.
 
@@ -116,11 +116,11 @@ keepassxc-cli clip https://github.com totp
 
 ```bash
 # Password is prompted securely if --password is not given
-keepassxc-cli add https://example.com user@example.com
-keepassxc-cli add https://example.com user --password mypass
+kpxc-cli add https://example.com user@example.com
+kpxc-cli add https://example.com user --password mypass
 # Place the entry in a specific group by UUID or by path
-keepassxc-cli add https://example.com user --group-uuid <group-uuid>
-keepassxc-cli add https://example.com user --group "Work/Projects"
+kpxc-cli add https://example.com user --group-uuid <group-uuid>
+kpxc-cli add https://example.com user --group "Work/Projects"
 ```
 
 > **Note**: The entry title is always derived from the URL hostname by KeePassXC. The protocol has no field to set a custom title.
@@ -129,33 +129,33 @@ keepassxc-cli add https://example.com user --group "Work/Projects"
 
 ```bash
 # URL is positional; --uuid is optional when the URL matches exactly one entry
-keepassxc-cli edit https://github.com --username newuser
-keepassxc-cli edit https://github.com --password newpass
+kpxc-cli edit https://github.com --username newuser
+kpxc-cli edit https://github.com --password newpass
 # Specify --uuid explicitly when the URL matches multiple entries
-keepassxc-cli edit https://github.com --uuid <uuid> --username newuser
+kpxc-cli edit https://github.com --uuid <uuid> --username newuser
 ```
 
 #### `rm` — Delete an entry
 
 ```bash
-keepassxc-cli rm https://example.com         # prompts for confirmation
-keepassxc-cli rm https://example.com --yes   # skip confirmation
+kpxc-cli rm https://example.com         # prompts for confirmation
+kpxc-cli rm https://example.com --yes   # skip confirmation
 # Specify --uuid when URL matches multiple entries
-keepassxc-cli rm https://example.com --uuid <uuid> --yes
+kpxc-cli rm https://example.com --uuid <uuid> --yes
 ```
 
 #### `lock` — Lock the database
 
 ```bash
-keepassxc-cli lock
-keepassxc-cli lock -j
+kpxc-cli lock
+kpxc-cli lock -j
 ```
 
 #### `unlock` — Unlock the database
 
 ```bash
-keepassxc-cli unlock
-keepassxc-cli unlock -j
+kpxc-cli unlock
+kpxc-cli unlock -j
 ```
 
 Triggers biometric (TouchID/fingerprint) unlock if configured. Raises an error if the unlock times out or KeePassXC is not running.
@@ -163,8 +163,8 @@ Triggers biometric (TouchID/fingerprint) unlock if configured. Raises an error i
 #### `mkdir` — Create a group
 
 ```bash
-keepassxc-cli mkdir "Work"
-keepassxc-cli mkdir "Work/Projects"   # create Projects inside Work
+kpxc-cli mkdir "Work"
+kpxc-cli mkdir "Work/Projects"   # create Projects inside Work
 ```
 
 Use `/`-separated paths to create nested groups. KeePassXC creates any missing path segments automatically.
@@ -172,9 +172,9 @@ Use `/`-separated paths to create nested groups. KeePassXC creates any missing p
 #### `group-uuid` — Look up a group's UUID by path
 
 ```bash
-keepassxc-cli group-uuid "Work"
-keepassxc-cli group-uuid "Work/Projects"
-keepassxc-cli group-uuid "Work/Projects" -j
+kpxc-cli group-uuid "Work"
+kpxc-cli group-uuid "Work/Projects"
+kpxc-cli group-uuid "Work/Projects" -j
 ```
 
 Returns the UUID for the group at the given path (relative to the database root). Useful for scripting — pipe the UUID into `add --group-uuid`.
@@ -191,8 +191,8 @@ JSON output (`-j`):
 #### `version` — Show the CLI version
 
 ```bash
-keepassxc-cli version
-keepassxc-cli version -j
+kpxc-cli version
+kpxc-cli version -j
 ```
 
 Does not require a running KeePassXC instance.
@@ -217,7 +217,7 @@ Example `~/.keepassxc/cli.json`:
 
 ### Browser API config (`~/.keepassxc/browser-api.json`)
 
-Shared with `keepassxc-browser-api`. Contains the association keys created during `keepassxc-cli setup`. This file is automatically created and updated by the `setup` command.
+Shared with `keepassxc-browser-api`. Contains the association keys created during `kpxc-cli setup`. This file is automatically created and updated by the `setup` command.
 
 Both config files are stored with `0o600` permissions (owner read/write only).
 
@@ -234,7 +234,7 @@ Both config files are stored with `0o600` permissions (owner read/write only).
 These codes are stable and suitable for scripting, e.g.:
 
 ```bash
-keepassxc-cli show https://example.com || case $? in
+kpxc-cli show https://example.com || case $? in
   2) echo "Start KeePassXC first" ;;
   3) echo "Unlock timed out" ;;
   4) echo "Access denied" ;;
@@ -246,9 +246,9 @@ esac
 This package depends on [`keepassxc-browser-api`](https://github.com/mietzen/keepassxc-browser-api), which handles the KeePassXC browser extension protocol. The browser API credentials are stored in `~/.keepassxc/browser-api.json` and are shared with `keepassxc-ssh-agent` if installed.
 
 ```bash
-git clone https://github.com/mietzen/keepassxc-cli
+git clone https://github.com/mietzen/kpxc-cli
 git clone https://github.com/mietzen/keepassxc-browser-api
-cd keepassxc-cli
+cd kpxc-cli
 
 python3 -m venv .venv
 source .venv/bin/activate
@@ -284,10 +284,10 @@ Verify with [manual tests](/tests/manual_test.md).
 | Access denied by user | `4` |
 
 ```bash
-keepassxc-cli show https://test.example.com; echo "exit: $?"    # 0
-keepassxc-cli show https://ghost.example.com; echo "exit: $?"   # 1
+kpxc-cli show https://test.example.com; echo "exit: $?"    # 0
+kpxc-cli show https://ghost.example.com; echo "exit: $?"   # 1
 # Quit KeePassXC, then:
-keepassxc-cli status; echo "exit: $?"                           # 2
+kpxc-cli status; echo "exit: $?"                           # 2
 ```
 
 ---

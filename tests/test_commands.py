@@ -466,7 +466,7 @@ class TestVersionCommand:
             rc = version.run(mock_client, args, cli_config, browser_config, browser_config_path)
         assert rc == 0
         out = capsys.readouterr().out
-        assert "keepassxc-cli" in out
+        assert "kpxc-cli" in out
         assert "1.3.0" in out
 
     def test_package_not_found(self, mock_client, cli_config, browser_config, browser_config_path, capsys):
@@ -526,7 +526,7 @@ class TestExitCodes:
 
         config_path = tmp_path / "cli.json"
         monkeypatch.setattr("sys.argv", [
-            "keepassxc-cli", "--config", str(config_path),
+            "kpxc-cli", "--config", str(config_path),
             "show", "https://example.com",
         ])
 
@@ -561,3 +561,30 @@ class TestExitCodes:
     def test_other_protocol_error_rc1(self, monkeypatch, capsys, tmp_path):
         rc, out = self._run_main(ProtocolError("other error", error_code=7), monkeypatch, capsys, tmp_path)
         assert rc == 1
+
+
+# --- exit-codes command ---
+
+class TestExitCodesCommand:
+    def test_table_output(self, mock_client, cli_config, browser_config, browser_config_path, capsys):
+        from keepassxc_cli.commands import exit_codes
+        args = make_args()
+        rc = exit_codes.run(mock_client, args, cli_config, browser_config, browser_config_path)
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "0" in out
+        assert "SUCCESS" in out
+        assert "4" in out
+        assert "ACCESS_DENIED" in out
+
+    def test_json_output(self, mock_client, cli_config, browser_config, browser_config_path, capsys):
+        import json
+        from keepassxc_cli.commands import exit_codes
+        args = make_args()
+        rc = exit_codes.run(mock_client, args, cli_config, browser_config, browser_config_path, fmt="json")
+        assert rc == 0
+        data = json.loads(capsys.readouterr().out)
+        assert isinstance(data, list)
+        codes = {e["code"] for e in data}
+        assert codes == {0, 1, 2, 3, 4}
+        assert all("name" in e and "description" in e for e in data)
