@@ -2,7 +2,9 @@
 
 A command-line interface for [KeePassXC](https://keepassxc.org/) that communicates via the browser extension protocol, supporting biometric (TouchID/fingerprint) unlock on supported platforms.
 
-`kpxc-cli` talks to a running KeePassXC instance using the same native messaging protocol used by the KeePassXC Browser extension. This means:
+Also checkout: [KeePassXC SSH Agent](https://github.com/mietzen/keepassxc-ssh-agent)
+
+`kpxc-cli` (renamed from `keepassxc-cli`, to avoid collision) talks to a running KeePassXC instance using the same native messaging protocol used by the KeePassXC Browser extension. This means:
 
 - **Biometric unlock**: On macOS with TouchID (or similar) configured in KeePassXC, you can authenticate via fingerprint rather than typing your master password.
 - **No master password in shell history**: Authentication happens through KeePassXC's GUI, not the terminal.
