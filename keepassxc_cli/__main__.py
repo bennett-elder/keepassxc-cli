@@ -99,3 +99,7 @@ def main() -> None:
         print(f"Error: {e}", file=sys.stderr)
         rc = 1
     sys.exit(rc)
+
+
+if __name__ == "__main__":
+    main()
