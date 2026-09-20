@@ -3,6 +3,9 @@ name: Release
 on:
   push:
     branches: [be-dev]
+    # Docs-only pushes don't need a new honk-v* release
+    paths-ignore:
+      - '**.md'
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
