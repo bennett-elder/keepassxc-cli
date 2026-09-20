@@ -31,7 +31,7 @@ KeePassXC CLI based on [KeePassXC Browser API](https://github.com/mietzen/keepas
 See **[homebrew homepage](https://brew.sh/)** on how to setup homebrew.
 
 ```shell
-brew install mietzen/tap/keepassxc-cli
+brew install bennett-elder/honk/keepassxc-cli
 ```
 
 ### pipx
