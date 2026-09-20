@@ -53,17 +53,44 @@ jobs:
           name: kpxc-cli-x86_64
           path: x86_64
 
-      - name: Create universal binary
+      # Artifacts keep their build-time name (kpxc-cli); rename so each arch
+      # is unambiguous when attached to the release.
+      - name: Rename per-arch binaries
         run: |
-          lipo -create -output kpxc-cli arm64/kpxc-cli x86_64/kpxc-cli
-          chmod +x kpxc-cli
+          mv arm64/kpxc-cli arm64/kpxc-cli-arm64
+          mv x86_64/kpxc-cli x86_64/kpxc-cli-x86_64
+          chmod +x arm64/kpxc-cli-arm64 x86_64/kpxc-cli-x86_64
 
-      - name: Smoke test universal binary
-        run: ./kpxc-cli version
+      # NOTE: no `lipo` universal merge. Two PyInstaller onefile bundles fused
+      # into one fat binary are structurally broken: the bootloader locates its
+      # archive via the cookie at end-of-file, so whichever arch was appended
+      # last wins and the other arch dlopens the wrong-arch embedded Python
+      # ("incompatible architecture (have 'arm64', need 'x86_64')"). Verified
+      # live on a real Intel Mac. Ship per-arch assets instead; the Homebrew
+      # formula selects the right one via on_arm/on_intel.
+      #
+      # Intel: Homebrew stopped building homebrew-core bottles for x86_64 and
+      # ends brew-on-Intel entirely ~Sept 2027 (docs.brew.sh/Support-Tiers),
+      # but third-party taps shipping their own binaries are NOT affected by
+      # the bottle cutoff — verified by installing this tap's formula on a
+      # real Intel Mac with brew 7.0.3 (2026-09). Keep the x86_64 asset + tap
+      # block until then; the release asset stays directly downloadable after.
+      - name: Smoke test arm64 binary
+        run: arm64/kpxc-cli-arm64 version
 
-      - name: Compute SHA256
+      - name: Smoke test x86_64 binary (Rosetta, when available)
+        run: |
+          if arch -x86_64 /usr/bin/true 2>/dev/null; then
+            arch -x86_64 x86_64/kpxc-cli-x86_64 version
+          else
+            echo "Rosetta not available on this runner; skipping x86_64 runtime test"
+          fi
+
+      - name: Compute SHA256s
         id: sha
-        run: echo "sha256=$(shasum -a 256 kpxc-cli | awk '{print $1}')" >> $GITHUB_OUTPUT
+        run: |
+          echo "sha_arm64=$(shasum -a 256 arm64/kpxc-cli-arm64 | awk '{print $1}')" >> $GITHUB_OUTPUT
+          echo "sha_x86_64=$(shasum -a 256 x86_64/kpxc-cli-x86_64 | awk '{print $1}')" >> $GITHUB_OUTPUT
 
       - name: Create release
         env:
@@ -78,32 +105,47 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           git tag $VERSION
           git push origin $VERSION
-          gh release create $VERSION kpxc-cli \
+          gh release create $VERSION \
+            arm64/kpxc-cli-arm64 x86_64/kpxc-cli-x86_64 \
             --title "$VERSION ($SHORT_SHA)" \
-            --notes "Built from $GITHUB_SHA"
+            --notes "Built from $GITHUB_SHA. kpxc-cli-arm64 for Apple Silicon, kpxc-cli-x86_64 for Intel."
 
       - name: Update homebrew tap
         env:
           TAP_TOKEN: ${{ secrets.TAP_TOKEN }}
         run: |
-          SHA256=${{ steps.sha.outputs.sha256 }}
+          VERSION_NUM=${VERSION#honk-v}
+          SHA_ARM64=${{ steps.sha.outputs.sha_arm64 }}
+          SHA_X86_64=${{ steps.sha.outputs.sha_x86_64 }}
           git clone https://x-access-token:${TAP_TOKEN}@github.com/bennett-elder/homebrew-honk.git
           cd homebrew-honk
           cat > Formula/keepassxc-cli.rb << EOF
           class KeepassxcCli < Formula
             desc "CLI for KeePassXC using the browser extension protocol with biometric unlock"
             homepage "https://github.com/bennett-elder/keepassxc-cli"
-            url "https://github.com/bennett-elder/keepassxc-cli/releases/download/${VERSION}/kpxc-cli"
-            sha256 "${SHA256}"
-            version "${VERSION}"
+            version "${VERSION_NUM}"
+
+            on_arm do
+              url "https://github.com/bennett-elder/keepassxc-cli/releases/download/${VERSION}/kpxc-cli-arm64"
+              sha256 "${SHA_ARM64}"
+            end
+
+            on_intel do
+              url "https://github.com/bennett-elder/keepassxc-cli/releases/download/${VERSION}/kpxc-cli-x86_64"
+              sha256 "${SHA_X86_64}"
+            end
 
             def install
-              bin.install "kpxc-cli"
+              if Hardware::CPU.arm?
+                bin.install "kpxc-cli-arm64" => "kpxc-cli"
+              else
+                bin.install "kpxc-cli-x86_64" => "kpxc-cli"
+              end
             end
           end
           EOF
           git config user.email "github-actions@github.com"
           git config user.name "github-actions"
           git add Formula/keepassxc-cli.rb
-          git commit -m "Update keepassxc-cli to ${SHORT_SHA}"
+          git commit -m "Update keepassxc-cli to ${VERSION_NUM}"
           git push

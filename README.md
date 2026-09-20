@@ -350,18 +350,33 @@ trigger stays a no-op on the fork.
 
 `.github/workflows/release.yml` (on `be-dev` only) automates each push:
 
-1. PyInstaller onefile on `macos-26` (arm64) + `macos-15-intel` (x86_64)
-2. `lipo` universal binary, `./kpxc-cli version` smoke test, sha256
-3. Tag `honk-v<UTC timestamp>`, GitHub release with the binary attached
-4. Commit updated `Formula/keepassxc-cli.rb` to `bennett-elder/homebrew-honk`
-   (uses `TAP_TOKEN` secret — a fine-grained PAT with Contents: read/write on
-   the tap repo only)
+1. PyInstaller onefile per arch: `macos-26` (arm64) + `macos-15-intel` (x86_64)
+2. Per-arch assets `kpxc-cli-arm64` / `kpxc-cli-x86_64` (no lipo merge — see
+   below), smoke tests, sha256s
+3. Tag `honk-v<UTC timestamp>`, GitHub release with both binaries attached
+4. Commit `Formula/keepassxc-cli.rb` with `on_arm`/`on_intel` conditional URLs
+   to `bennett-elder/homebrew-honk` (uses `TAP_TOKEN` secret — a fine-grained
+   PAT with Contents: read/write on the tap repo only)
 
-Install from the tap:
+Install from the tap (each Mac gets its native binary):
 
 ```bash
 brew install bennett-elder/honk/keepassxc-cli
 ```
+
+**Why no universal binary**: fusing two PyInstaller onefile bundles with
+`lipo` yields a fat binary whose bootloader locates its embedded archive via
+the end-of-file cookie — whichever arch was appended last wins, and the other
+arch dlopens the wrong-arch Python (`incompatible architecture (have 'arm64',
+need 'x86_64')`). Verified on real Intel hardware; per-arch assets sidestep it
+entirely.
+
+**Intel note**: Homebrew stopped building homebrew-core bottles for x86_64
+and ends brew-on-Intel around Sept 2027 ([Support
+Tiers](https://docs.brew.sh/Support-Tiers)). That cutoff concerns homebrew-core
+bottles only — third-party taps shipping their own binaries are unaffected, so
+this tap serves Intel until then, and the release asset remains directly
+downloadable afterwards.
 
 ## Known Limitations
 
