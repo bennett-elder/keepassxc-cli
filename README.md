@@ -2,6 +2,13 @@
 
 A command-line interface for [KeePassXC](https://keepassxc.org/) that communicates via the browser extension protocol, supporting biometric (TouchID/fingerprint) unlock on supported platforms.
 
+> **This is the `bennett-elder` fork** of
+> [mietzen/keepassxc-cli](https://github.com/mietzen/keepassxc-cli) (work on
+> the `be-dev` branch). All install instructions below target **this fork**:
+> the Homebrew tap serves this fork's binaries, and pipx installs from this
+> repository. The `keepassxc-cli` package on PyPI belongs to upstream — don't
+> use it if you want this fork.
+
 Also checkout: [KeePassXC SSH Agent](https://github.com/mietzen/keepassxc-ssh-agent)
 
 `kpxc-cli` (renamed from `keepassxc-cli`, to avoid collision) talks to a running KeePassXC instance using the same native messaging protocol used by the KeePassXC Browser extension. This means:
@@ -28,7 +35,8 @@ KeePassXC CLI based on [KeePassXC Browser API](https://github.com/mietzen/keepas
 
 ### Homebrew (recommended)
 
-See **[homebrew homepage](https://brew.sh/)** on how to setup homebrew.
+From this fork's tap — installs the native binary for your Mac (Apple Silicon
+or Intel):
 
 ```shell
 brew install bennett-elder/honk/keepassxc-cli
@@ -36,9 +44,14 @@ brew install bennett-elder/honk/keepassxc-cli
 
 ### pipx
 
+The `keepassxc-cli` package on PyPI is **upstream's**, not this fork's — so
+install from this repository instead:
+
 ```bash
-pipx install keepassxc-cli
+pipx install git+https://github.com/bennett-elder/keepassxc-cli.git@be-dev
 ```
+
+Both methods install the same `kpxc-cli` command.
 
 ## Setup
 
@@ -272,18 +285,14 @@ esac
 
 ## Development
 
-This package depends on [`keepassxc-browser-api`](https://github.com/mietzen/keepassxc-browser-api), which handles the KeePassXC browser extension protocol. The browser API credentials are stored in `~/.keepassxc/browser-api.json` and are shared with `keepassxc-ssh-agent` if installed.
+This package depends on [`keepassxc-browser-api`](https://github.com/mietzen/keepassxc-browser-api) (pinned in `pyproject.toml` and installed from PyPI — no separate clone needed), which handles the KeePassXC browser extension protocol. The browser API credentials are stored in `~/.keepassxc/browser-api.json` and are shared with `keepassxc-ssh-agent` if installed.
 
 ```bash
-git clone https://github.com/mietzen/kpxc-cli
-git clone https://github.com/mietzen/keepassxc-browser-api
-cd kpxc-cli
+git clone -b be-dev https://github.com/bennett-elder/keepassxc-cli
+cd keepassxc-cli
 
 python3 -m venv .venv
 source .venv/bin/activate
-
-# Install local keepassxc-browser-api dependency first
-pip install ../mietzen-keepassxc-browser-api/
 
 # Install in editable mode with dev dependencies
 pip install -e ".[dev]"
