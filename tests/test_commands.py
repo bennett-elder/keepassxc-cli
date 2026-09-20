@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -11,7 +12,7 @@ from keepassxc_browser_api import Entry, BrowserConfig, Association
 from keepassxc_browser_api.exceptions import ConnectionError, DatabaseLockedError, ProtocolError
 from keepassxc_cli.config import CliConfig
 from keepassxc_cli.commands import (
-    setup, status, show, add, edit, rm, totp, clip, lock, unlock, mkdir, group_uuid, version,
+    setup, status, show, dump, read, add, edit, rm, totp, clip, lock, unlock, mkdir, group_uuid, version,
 )
 
 
@@ -44,6 +45,7 @@ def make_args(**kwargs) -> argparse.Namespace:
         "uuid": "abcdef12-0000-0000-0000-000000000000",
         "name": "NewGroup",
         "path": "Work",
+        "item": "example.com/password",
         "json_output": False,
     }
     defaults.update(kwargs)
@@ -145,6 +147,37 @@ class TestShowCommand:
         assert rc == 0
         mock_client.get_logins.assert_called_once_with("https://example.com")
         assert any("no scheme" in r.message.lower() for r in caplog.records)
+
+
+# --- dump ---
+
+class TestDumpCommand:
+    def test_table_shows_raw_kph_and_password(self, mock_client, cli_config, browser_config, browser_config_path, capsys, mock_entry):
+        entry = mock_entry(string_fields=[{"KPH: API_KEY": "secret-value"}])
+        mock_client.get_logins.return_value = [entry]
+        args = make_args(url="https://example.com")
+        rc = dump.run(mock_client, args, cli_config, browser_config, browser_config_path)
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "KPH: API_KEY: secret-value" in out
+        assert "s3cr3t" in out  # password revealed by default
+
+    def test_json_keeps_raw_kph_names(self, mock_client, cli_config, browser_config, browser_config_path, capsys, mock_entry):
+        entry = mock_entry(string_fields=[{"KPH: API_KEY": "secret-value"}])
+        mock_client.get_logins.return_value = [entry]
+        args = make_args(url="https://example.com")
+        rc = dump.run(mock_client, args, cli_config, browser_config, browser_config_path, fmt="json")
+        assert rc == 0
+        data = json.loads(capsys.readouterr().out)
+        assert data["string_fields"] == [{"KPH: API_KEY": "secret-value"}]
+        assert data["password"] == "s3cr3t"
+
+    def test_no_entries(self, mock_client, cli_config, browser_config, browser_config_path, caplog):
+        mock_client.get_logins.return_value = []
+        args = make_args(url="https://example.com")
+        rc = dump.run(mock_client, args, cli_config, browser_config, browser_config_path)
+        assert rc == 1
+        assert any("No entries" in r.message for r in caplog.records)
 
 
 # --- add ---
@@ -354,6 +387,109 @@ class TestClipCommand:
         assert any("pyperclip" in r.message for r in caplog.records)
 
 
+# --- read ---
+
+class TestReadCommand:
+    def test_read_kph_string_field_by_clean_name(self, mock_client, cli_config, browser_config, browser_config_path, capsys, mock_entry):
+        entry = mock_entry(string_fields=[{"KPH: API_KEY": "sakgfhjd;asghjdsfkghjk;lsdf"}])
+        mock_client.get_logins.return_value = [entry]
+        args = make_args(item="profile_for_dev_account/API_KEY", uuid=None)
+        rc = read.run(mock_client, args, cli_config, browser_config, browser_config_path)
+        assert rc == 0
+        assert capsys.readouterr().out.strip() == "sakgfhjd;asghjdsfkghjk;lsdf"
+
+    def test_read_kph_string_field_by_prefixed_name(self, mock_client, cli_config, browser_config, browser_config_path, capsys, mock_entry):
+        entry = mock_entry(string_fields=[{"KPH: API_KEY": "sakgfhjd;asghjdsfkghjk;lsdf"}])
+        mock_client.get_logins.return_value = [entry]
+        args = make_args(item="profile_for_dev_account/KPH: API_KEY", uuid=None)
+        rc = read.run(mock_client, args, cli_config, browser_config, browser_config_path)
+        assert rc == 0
+        assert capsys.readouterr().out.strip() == "sakgfhjd;asghjdsfkghjk;lsdf"
+
+    def test_read_builtin_password(self, mock_client, cli_config, browser_config, browser_config_path, capsys, mock_entry):
+        entry = mock_entry(password="s3cr3t")
+        mock_client.get_logins.return_value = [entry]
+        args = make_args(item="example.com/password", uuid=None)
+        rc = read.run(mock_client, args, cli_config, browser_config, browser_config_path)
+        assert rc == 0
+        assert capsys.readouterr().out.strip() == "s3cr3t"
+
+    def test_read_builtin_username_alias(self, mock_client, cli_config, browser_config, browser_config_path, capsys, mock_entry):
+        entry = mock_entry(login="user@example.com")
+        mock_client.get_logins.return_value = [entry]
+        args = make_args(item="example.com/username", uuid=None)
+        rc = read.run(mock_client, args, cli_config, browser_config, browser_config_path)
+        assert rc == 0
+        assert capsys.readouterr().out.strip() == "user@example.com"
+
+    def test_read_builtin_uuid(self, mock_client, cli_config, browser_config, browser_config_path, capsys, mock_entry):
+        entry = mock_entry(uuid="abcdef12-0000-0000-0000-000000000000")
+        mock_client.get_logins.return_value = [entry]
+        args = make_args(item="example.com/uuid", uuid=None)
+        rc = read.run(mock_client, args, cli_config, browser_config, browser_config_path)
+        assert rc == 0
+        assert capsys.readouterr().out.strip() == "abcdef12-0000-0000-0000-000000000000"
+
+    def test_read_totp(self, mock_client, cli_config, browser_config, browser_config_path, capsys, mock_entry):
+        entry = mock_entry()
+        mock_client.get_logins.return_value = [entry]
+        mock_client.get_totp.return_value = "654321"
+        args = make_args(item="example.com/totp", uuid=None)
+        rc = read.run(mock_client, args, cli_config, browser_config, browser_config_path)
+        assert rc == 0
+        assert capsys.readouterr().out.strip() == "654321"
+        mock_client.get_totp.assert_called_once_with(entry.uuid)
+
+    def test_read_missing_field(self, mock_client, cli_config, browser_config, browser_config_path, caplog, mock_entry):
+        entry = mock_entry(string_fields=[{"KPH: API_KEY": "v"}])
+        mock_client.get_logins.return_value = [entry]
+        args = make_args(item="example.com/API_TOKEN", uuid=None)
+        rc = read.run(mock_client, args, cli_config, browser_config, browser_config_path)
+        assert rc == 1
+        assert any("API_TOKEN" in r.message for r in caplog.records)
+        assert any("API_KEY" in r.message for r in caplog.records)
+
+    def test_read_no_entries(self, mock_client, cli_config, browser_config, browser_config_path, caplog):
+        mock_client.get_logins.return_value = []
+        args = make_args(item="example.com/password", uuid=None)
+        rc = read.run(mock_client, args, cli_config, browser_config, browser_config_path)
+        assert rc == 1
+        assert any("No entries" in r.message for r in caplog.records)
+
+    def test_read_missing_slash(self, mock_client, cli_config, browser_config, browser_config_path, caplog):
+        args = make_args(item="example.com", uuid=None)
+        rc = read.run(mock_client, args, cli_config, browser_config, browser_config_path)
+        assert rc == 1
+        assert any("ENTRY/FIELD" in r.message for r in caplog.records)
+
+    def test_read_multiple_entries(self, mock_client, cli_config, browser_config, browser_config_path, caplog, mock_entry):
+        e1 = mock_entry(uuid="uuid-1", login="alice")
+        e2 = mock_entry(uuid="uuid-2", login="bob")
+        mock_client.get_logins.return_value = [e1, e2]
+        args = make_args(item="example.com/password", uuid=None)
+        rc = read.run(mock_client, args, cli_config, browser_config, browser_config_path)
+        assert rc == 1
+        assert any("Multiple entries" in r.message for r in caplog.records)
+
+    def test_read_multiple_entries_with_uuid(self, mock_client, cli_config, browser_config, browser_config_path, capsys, mock_entry):
+        e1 = mock_entry(uuid="uuid-1", login="alice")
+        e2 = mock_entry(uuid="uuid-2", login="bob")
+        mock_client.get_logins.return_value = [e1, e2]
+        args = make_args(item="example.com/password", uuid="uuid-2")
+        rc = read.run(mock_client, args, cli_config, browser_config, browser_config_path)
+        assert rc == 0
+        assert capsys.readouterr().out.strip() == "s3cr3t"
+
+    def test_url_no_scheme_prefixed(self, mock_client, cli_config, browser_config, browser_config_path, capsys, caplog, mock_entry):
+        entry = mock_entry(password="s3cr3t")
+        mock_client.get_logins.return_value = [entry]
+        args = make_args(item="example.com/password", uuid=None)
+        rc = read.run(mock_client, args, cli_config, browser_config, browser_config_path)
+        assert rc == 0
+        mock_client.get_logins.assert_called_once_with("https://example.com")
+        assert any("no scheme" in r.message.lower() for r in caplog.records)
+
+
 # --- lock ---
 
 class TestLockCommand:
@@ -561,6 +697,30 @@ class TestExitCodes:
     def test_other_protocol_error_rc1(self, monkeypatch, capsys, tmp_path):
         rc, out = self._run_main(ProtocolError("other error", error_code=7), monkeypatch, capsys, tmp_path)
         assert rc == 1
+
+    def test_quiet_suppresses_no_scheme_warning(self, monkeypatch, capsys, tmp_path):
+        from keepassxc_cli.__main__ import main
+
+        config_path = tmp_path / "cli.json"
+        monkeypatch.setattr("sys.argv", [
+            "kpxc-cli", "-q", "--config", str(config_path),
+            "show", "example.com",
+        ])
+
+        entry = Entry(uuid="u1", name="Example", login="user", password="pass", string_fields=[])
+        mock_client_instance = MagicMock()
+        mock_client_instance.get_logins.return_value = [entry]
+
+        with patch("keepassxc_cli.__main__.BrowserClient", return_value=mock_client_instance):
+            with patch("keepassxc_cli.__main__.BrowserConfig"):
+                with patch("keepassxc_cli.__main__.CliConfig"):
+                    with pytest.raises(SystemExit) as exc_info:
+                        main()
+
+        rc, out = exc_info.value.code, capsys.readouterr()
+        assert rc == 0
+        assert "no scheme" not in out.err
+        assert "https://example.com" not in out.err
 
 
 # --- exit-codes command ---

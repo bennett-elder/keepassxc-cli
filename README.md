@@ -55,7 +55,7 @@ This performs a key exchange with KeePassXC (you will be prompted to allow the a
 ### Global options
 
 ```
-kpxc-cli [--config PATH] [--browser-api-config PATH] [-v] COMMAND [COMMAND OPTIONS]
+kpxc-cli [--config PATH] [--browser-api-config PATH] [-v | -q] COMMAND [COMMAND OPTIONS]
 ```
 
 | Option | Description |
@@ -63,6 +63,7 @@ kpxc-cli [--config PATH] [--browser-api-config PATH] [-v] COMMAND [COMMAND OPTIO
 | `--config` | Path to CLI config file (default: `~/.keepassxc/cli.json`) |
 | `--browser-api-config` | Path to browser API config file (default: `~/.keepassxc/browser-api.json`) |
 | `-v, --verbose` | Enable verbose/debug logging |
+| `-q, --quiet` | Suppress warnings (errors only). Useful for scripting — e.g. `kpxc-cli -q read account/API_KEY` hides the `has no scheme` warning |
 
 Some commands support a `-j / --json` flag for JSON output — pass it anywhere after the subcommand name:
 
@@ -97,6 +98,32 @@ kpxc-cli show https://github.com -j
 ```
 
 Without `-p`, password and TOTP are omitted from the output entirely.
+
+#### `dump` — Dump every field on entries for a URL
+
+```bash
+kpxc-cli dump https://github.com
+kpxc-cli dump https://github.com -j
+```
+
+Prints every field the entry exposes, including the **raw `KPH:` attribute names** that KeePassXC's browser integration uses internally for custom string fields (so you can audit exactly what's stored and what's available). Password and TOTP are always shown.
+
+#### `read` — Print a single field as a bare value
+
+```bash
+kpxc-cli read example.com/API_KEY
+kpxc-cli read example.com/password
+kpxc-cli read example.com/username
+kpxc-cli read example.com/totp
+```
+
+Reads one field from an entry and prints **only the value** (no labels, no JSON), so it can be captured or piped into another command:
+
+```bash
+export API_KEY="$(kpxc-cli read profile_for_dev_account/API_KEY)"
+```
+
+Custom string attributes are matched *without* the `KPH:` prefix that KeePassXC stores them under, so `read example.com/API_KEY` finds a field named `KPH: API_KEY`, and `read example.com/KPH: API_KEY` also works. Pass `--uuid` when the entry reference matches multiple entries.
 
 #### `totp` — Get TOTP code
 

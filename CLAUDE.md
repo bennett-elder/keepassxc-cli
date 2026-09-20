@@ -19,6 +19,8 @@ keepassxc_cli/
     ├── setup.py         # associate with KeePassXC
     ├── status.py        # show connection/association status
     ├── show.py          # show entries by URL
+    ├── dump.py          # dump every field of entries (raw KPH: names + passwords)
+    ├── read.py          # read one field as bare output (handles KPH: prefix)
     ├── add.py           # add new entry: positional url/username, --group/--group-uuid optional
     ├── edit.py          # edit existing entry: positional url, --uuid/--username/--password optional
     ├── rm.py            # delete entry: positional url, --uuid optional for disambiguation
@@ -99,7 +101,8 @@ ruff check --ignore=E501 --exclude=__init__.py ./keepassxc_cli
 - **Ruff**: `ruff check --ignore=E501 --exclude=__init__.py ./keepassxc_cli`
 - **No async code**: Everything is synchronous. No threads in the CLI.
 - **Output**: Use `print()` for normal (stdout) output. Error/warning messages use `logger.error()` / `logger.warning()` — never `print(file=sys.stderr)` directly.
-- **Logging config**: Set by `__main__.py`. Non-verbose: `WARNING` level, `"%(message)s"` format, to `sys.stderr`. Verbose (`-v`): `DEBUG` level with timestamp format to `sys.stderr`.
+- **Logging config**: Set by `__main__.py`. Default: `WARNING` level, `"%(message)s"` format, to `sys.stderr`. Verbose (`-v`): `DEBUG` level with timestamp format to `sys.stderr`.
+- **Quiet mode (`-q`)**: Global flag, mutually exclusive with `-v`. Sets root logging to `ERROR` so warnings (e.g. the URL scheme notice from `ensure_scheme`) are suppressed while errors still print to `sys.stderr`. Use it in scripts: `kpxc-cli -q read account/API_KEY`.
 - **Exit codes**: `run()` functions return `int` (0 = success, non-zero = failure). `__main__.py` maps exceptions to exit codes:
 
   | Code | Meaning |

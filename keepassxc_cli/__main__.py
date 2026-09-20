@@ -11,7 +11,7 @@ from keepassxc_browser_api import BrowserClient, BrowserConfig
 from keepassxc_browser_api.exceptions import ConnectionError, DatabaseLockedError, KeePassXCError, ProtocolError
 
 from .config import CliConfig, DEFAULT_CLI_CONFIG_PATH
-from .commands import setup, status, show, add, edit, rm, totp, clip, lock, unlock, mkdir, group_uuid, version, exit_codes
+from .commands import setup, status, show, dump, read, add, edit, rm, totp, clip, lock, unlock, mkdir, group_uuid, version, exit_codes
 
 # Shared parent parser that injects -j/--json into each subparser that supports it.
 # Defined at module level so command modules can import it if needed.
@@ -40,7 +40,9 @@ def main() -> None:
         default=None,
         help="Path to browser API config file",
     )
-    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging")
+    log_group = parser.add_mutually_exclusive_group()
+    log_group.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging")
+    log_group.add_argument("-q", "--quiet", action="store_true", help="Suppress warnings (errors only)")
 
     subparsers = parser.add_subparsers(dest="command", metavar="COMMAND")
     subparsers.required = True
@@ -48,6 +50,8 @@ def main() -> None:
     setup.add_parser(subparsers)
     status.add_parser(subparsers, fmt_parent)
     show.add_parser(subparsers, fmt_parent)
+    dump.add_parser(subparsers, fmt_parent)
+    read.add_parser(subparsers)
     add.add_parser(subparsers, fmt_parent)
     edit.add_parser(subparsers, fmt_parent)
     rm.add_parser(subparsers, fmt_parent)
@@ -67,6 +71,12 @@ def main() -> None:
             level=logging.DEBUG,
             format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
             datefmt="%H:%M:%S",
+        )
+    elif args.quiet:
+        logging.basicConfig(
+            level=logging.ERROR,
+            format="%(message)s",
+            stream=sys.stderr,
         )
     else:
         logging.basicConfig(
