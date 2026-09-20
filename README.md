@@ -321,6 +321,48 @@ kpxc-cli status; echo "exit: $?"                           # 2
 
 ---
 
+## Development (fork)
+
+### Building the standalone binary
+
+Requires the `build` extra (`pyinstaller`) and a bootstrap entry that imports the
+package as a module, keeping relative imports intact (passing `__main__.py`
+directly breaks them):
+
+```bash
+pip install -e ".[build]"
+pyinstaller --onefile --hidden-import _cffi_backend --paths . --name kpxc-cli packaging/pyinstaller-entry.py
+./dist/kpxc-cli version
+```
+
+`_cffi_backend` is a runtime dependency of `pynacl` (used by the browser
+protocol) that PyInstaller does not detect automatically. `--paths .` is
+required with modern setuptools editable installs, which inject a meta-path
+finder rather than a `sys.path` entry, so static analysis can't see the
+project root without it.
+
+### Releases (bennett-elder fork)
+
+Tags use a `honk-v*` namespace — deliberately disjoint from upstream's
+`v0.1.0`–`v3.0.0` tags inherited on fork — and are also rejected by upstream
+`pypi.yml`'s `^v\d+\.\d+\.\d+$` version gate, so its `release: published`
+trigger stays a no-op on the fork.
+
+`.github/workflows/release.yml` (on `be-dev` only) automates each push:
+
+1. PyInstaller onefile on `macos-26` (arm64) + `macos-15-intel` (x86_64)
+2. `lipo` universal binary, `./kpxc-cli version` smoke test, sha256
+3. Tag `honk-v<UTC timestamp>`, GitHub release with the binary attached
+4. Commit updated `Formula/keepassxc-cli.rb` to `bennett-elder/homebrew-honk`
+   (uses `TAP_TOKEN` secret — a fine-grained PAT with Contents: read/write on
+   the tap repo only)
+
+Install from the tap:
+
+```bash
+brew install bennett-elder/honk/keepassxc-cli
+```
+
 ## Known Limitations
 
 - Requires KeePassXC to be **running** and the database to be **open** (or biometric auto-unlock configured).
